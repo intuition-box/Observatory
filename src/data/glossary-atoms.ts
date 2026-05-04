@@ -24,6 +24,15 @@ export interface GlossaryAtom {
    * What role the atom typically plays in a claim.
    * - `predicate`: middle position (verb-like or relation)
    * - `entity`: subject/object position (thing-like, often proper nouns)
+   *
+   * TODO(primitive-kind): when more value atoms land in the glossary
+   * (numerics, enums, timestamps, URIs as data, etc.) extend this union
+   * with a third option — `primitive` — and split booleans (`true`,
+   * `false`) out of `entity`. Current classification of booleans as
+   * entities is a pragmatic shoehorn because the binary doesn't fit
+   * cleanly; see the `true`/`false` entries. Surfacing primitives as
+   * their own kind lets the glossary page badge them distinctly and
+   * filter them separately in its kind-chip row.
    */
   kind: 'predicate' | 'entity';
   /**
@@ -422,7 +431,7 @@ export const GLOSSARY_ATOMS: GlossaryAtom[] = [
     label: 'related to',
     kind: 'predicate',
     form: 'phrase',
-    conceptGroup: 'related',
+    conceptGroup: 'relate',
     description: 'Expresses that subject has a thematic or contextual relationship with object. A weak, neutral association — weaker than `supports`, `contradicts`, or `conditions`. Use for loose correlations where outcomes or concepts are connected but neither strictly depends on the other.',
   },
   {
@@ -435,6 +444,10 @@ export const GLOSSARY_ATOMS: GlossaryAtom[] = [
   },
 
   // ─── Boolean primitives ────────────────────────────────────
+  // Shoehorned as `kind: 'entity'` for now — they're really value primitives,
+  // not things. When more value atoms land (numerics, enums, timestamps, …),
+  // introduce a `kind: 'primitive'` option and reclassify these. See the
+  // `kind` field doc on GlossaryAtom above for the full follow-up note.
 
   {
     address: '0x4f2874d4ad8b146c86ac84188e86635a794ddbfa4cfc40670a70467e08db36a2',
