@@ -463,5 +463,48 @@ export const GLOSSARY_ATOMS: GlossaryAtom[] = [
     conceptGroup: 'boolean',
     description: 'Canonical boolean false value. Used as the object in assertion, resolution, or outcome triples to mark a claim as rejected, invalid, or negatively resolved. Pairs with `true` for binary outcomes. Neutral primitive — any protocol can reference it.',
   },
+
+  // ─── AgentScore / AI agent reputation ─────────────────────
+
+  {
+    address: '0x638fd866e4564e213a11ebeb98bbaea58e81f677860d90fa4ad01e50bb007108',
+    label: 'has agent skill',
+    kind: 'predicate',
+    form: 'phrase',
+    conceptGroup: 'agent-skill',
+    description: 'Declares that an Agent possesses a specific Skill or capability. Usage: [Agent] — has agent skill — [Skill]. Stake-weighted attestation: supporters increase the agent\'s credibility in that skill domain; opponents decrease it.',
+  },
+  {
+    address: '0x3ce0f03b579b0b3d2dcbfbbfb7adb0dd00ab2cf3393ab7201518fabae6dc05f7',
+    label: 'opposes',
+    kind: 'predicate',
+    form: 'third-person-singular',
+    conceptGroup: 'oppose',
+    description: 'Indicates that one entity actively opposes or counters another. Counter-signal to `trusts` — stake on this triple reduces the subject\'s aggregate trust in stake-weighted scoring systems. Consumers should filter by trusted publisher address.',
+  },
+  {
+    address: '0xb769bc51460e2dc29927c825f743238174c02901603a0c9604dd2e8ea40f8226',
+    label: 'evaluated by',
+    kind: 'predicate',
+    form: 'passive',
+    conceptGroup: 'evaluate',
+    description: 'Records that an entity was reviewed or assessed by an evaluator. Links a subject to the party responsible for its quality or reliability assessment. Consumers may weight evaluations by evaluator reputation.',
+  },
+  {
+    address: '0x51f1febac0b9d05953442f082597c5d1ce827bd2f888446ad811692e0a0f428d',
+    label: 'reported for',
+    kind: 'predicate',
+    form: 'phrase',
+    conceptGroup: 'report',
+    description: 'Indicates that an entity has been flagged for a specific concern. Object atom carries the category (e.g. Scam, Spam, Injection). Consumers should filter by trusted publisher address.',
+  },
+  {
+    address: '0xbeebfb7d177cbd96ffc239d2196c72ec346efe81f39dc595773f13d83506f5f0',
+    label: 'same as',
+    kind: 'predicate',
+    form: 'phrase',
+    conceptGroup: 'identity',
+    description: 'Expresses that subject and object are different identifiers for the same underlying entity. Classic schema.org sameAs pattern. Use when one identifier may be mutable and another is immutable. The triple survives changes to the mutable side.',
+  },
 ];
 /* eslint-enable @stylistic/max-len */
