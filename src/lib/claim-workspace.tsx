@@ -46,14 +46,24 @@ export function ClaimWorkspaceProvider({ searchQuery, children }: ClaimWorkspace
     [setHistory]
   );
 
-  const addToBatch = useCallback((claim: Omit<ClaimEntry, 'id' | 'timestamp'>) => {
+  const addToBatch = useCallback((claim: Omit<ClaimEntry, 'id' | 'timestamp'>): boolean => {
+    const isDuplicate = batch.some(
+      (e) =>
+        e.subject === claim.subject &&
+        e.subjectType === claim.subjectType &&
+        e.predicateId === claim.predicateId &&
+        e.object === claim.object &&
+        e.objectType === claim.objectType
+    );
+    if (isDuplicate) return false;
     const entry: ClaimEntry = {
       ...claim,
       id: `batch-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
       timestamp: Date.now(),
     };
     setBatch((prev) => [...prev, entry]);
-  }, []);
+    return true;
+  }, [batch]);
 
   const restoreClaim = useCallback((entry: ClaimEntry) => {
     claimBuilderRef.current?.restoreClaim(entry);

@@ -1,8 +1,10 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Routes, Route, NavLink, useNavigate, useLocation } from 'react-router-dom';
+import { RainbowKitProvider, darkTheme, lightTheme } from '@rainbow-me/rainbowkit';
 
 import { GlobalSearchInput } from './components/global-search-input';
 import { TutorialOverlay, useTutorial } from './components/tutorial-overlay';
+import { WalletButton } from './components/wallet-button';
 import { useLocalStorage } from './lib/use-local-storage';
 import { useDebounce } from './lib/use-debounce';
 import { useKeyboardShortcuts } from './lib/use-keyboard-shortcuts';
@@ -40,6 +42,11 @@ export default function App() {
   useEffect(() => {
     document.documentElement.dataset.theme = theme;
   }, [theme]);
+
+  const rainbowKitTheme = useMemo(
+    () => (theme === 'dark' ? darkTheme() : lightTheme()),
+    [theme]
+  );
 
   const toggleTheme = useCallback(() => {
     setTheme((prev) => (prev === 'dark' ? 'light' : 'dark'));
@@ -80,77 +87,80 @@ export default function App() {
     }`;
 
   return (
-    <ClaimWorkspaceProvider searchQuery={debouncedSearchQuery}>
-      <div className="min-h-screen bg-[var(--color-bg)] pb-10">
-        <TutorialOverlay isOpen={tutorial.isOpen} onClose={tutorial.close} />
+    <RainbowKitProvider theme={rainbowKitTheme}>
+      <ClaimWorkspaceProvider searchQuery={debouncedSearchQuery}>
+        <div className="min-h-screen bg-[var(--color-bg)] pb-10">
+          <TutorialOverlay isOpen={tutorial.isOpen} onClose={tutorial.close} />
 
-        <header className="px-4 sm:px-6 py-4">
-          <div className="flex items-center justify-between gap-4">
-            <div className="flex items-center gap-3 shrink-0">
-              {/* Logo */}
-              <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-[var(--color-accent)]">
-                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="black" strokeWidth="2">
-                  <circle cx="12" cy="12" r="10" />
-                  <circle cx="12" cy="12" r="4" />
-                  <line x1="12" y1="2" x2="12" y2="6" />
-                  <line x1="12" y1="18" x2="12" y2="22" />
-                  <line x1="2" y1="12" x2="6" y2="12" />
-                  <line x1="18" y1="12" x2="22" y2="12" />
-                </svg>
+          <header className="px-4 sm:px-6 py-4">
+            <div className="flex items-center justify-between gap-4">
+              <div className="flex items-center gap-3 shrink-0">
+                {/* Logo */}
+                <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-[var(--color-accent)]">
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="black" strokeWidth="2">
+                    <circle cx="12" cy="12" r="10" />
+                    <circle cx="12" cy="12" r="4" />
+                    <line x1="12" y1="2" x2="12" y2="6" />
+                    <line x1="12" y1="18" x2="12" y2="22" />
+                    <line x1="2" y1="12" x2="6" y2="12" />
+                    <line x1="18" y1="12" x2="22" y2="12" />
+                  </svg>
+                </div>
+
+                {/* Navigation */}
+                <nav className="flex items-center gap-1" aria-label="Main navigation">
+                  <NavLink to="/" end className={navLinkClass}>
+                    Explorer
+                  </NavLink>
+                  <NavLink to="/matrix" className={navLinkClass} data-tutorial-step="entity-matrix-link">
+                    Matrix
+                  </NavLink>
+                  <NavLink to="/glossary" className={navLinkClass}>
+                    Glossary
+                  </NavLink>
+                </nav>
               </div>
 
-              {/* Navigation */}
-              <nav className="flex items-center gap-1" aria-label="Main navigation">
-                <NavLink to="/" end className={navLinkClass}>
-                  Explorer
-                </NavLink>
-                <NavLink to="/matrix" className={navLinkClass} data-tutorial-step="entity-matrix-link">
-                  Matrix
-                </NavLink>
-                <NavLink to="/glossary" className={navLinkClass}>
-                  Glossary
-                </NavLink>
-              </nav>
+              {/* Global search */}
+              <div className="hidden sm:flex flex-1 max-w-sm">
+                <GlobalSearchInput
+                  value={globalSearchQuery}
+                  onChange={setGlobalSearchQuery}
+                  inputRef={globalSearchRef}
+                />
+              </div>
+
+              <div className="flex items-center gap-1 shrink-0">
+                <button
+                  onClick={openTutorial}
+                  className="focus-ring h-8 w-8 inline-flex items-center justify-center rounded-md text-[var(--color-text-muted)] bg-[var(--color-surface-raised)] transition-colors hover:bg-[var(--color-surface-hover)] hover:text-[var(--color-text)]"
+                  aria-label="Open tutorial"
+                  title="Tutorial"
+                >
+                  <HelpIcon />
+                </button>
+                <button
+                  onClick={toggleTheme}
+                  className="focus-ring h-8 w-8 inline-flex items-center justify-center rounded-md text-[var(--color-text-muted)] bg-[var(--color-surface-raised)] transition-colors hover:bg-[var(--color-surface-hover)] hover:text-[var(--color-text)]"
+                  aria-label={`Switch to ${theme === 'dark' ? 'light' : 'dark'} theme`}
+                >
+                  {theme === 'dark' ? <SunIcon /> : <MoonIcon />}
+                </button>
+                <WalletButton />
+              </div>
             </div>
+          </header>
 
-            {/* Global search */}
-            <div className="hidden sm:flex flex-1 max-w-sm">
-              <GlobalSearchInput
-                value={globalSearchQuery}
-                onChange={setGlobalSearchQuery}
-                inputRef={globalSearchRef}
-              />
-            </div>
+          <SharedBatchFromHash />
 
-            <div className="flex items-center gap-1 shrink-0">
-              <button
-                onClick={openTutorial}
-                className="focus-ring h-8 w-8 inline-flex items-center justify-center rounded-md text-[var(--color-text-muted)] bg-[var(--color-surface-raised)] transition-colors hover:bg-[var(--color-surface-hover)] hover:text-[var(--color-text)]"
-                aria-label="Open tutorial"
-                title="Tutorial"
-              >
-                <HelpIcon />
-              </button>
-              <button
-                onClick={toggleTheme}
-                className="focus-ring h-8 w-8 inline-flex items-center justify-center rounded-md text-[var(--color-text-muted)] bg-[var(--color-surface-raised)] transition-colors hover:bg-[var(--color-surface-hover)] hover:text-[var(--color-text)]"
-                aria-label={`Switch to ${theme === 'dark' ? 'light' : 'dark'} theme`}
-              >
-                {theme === 'dark' ? <SunIcon /> : <MoonIcon />}
-              </button>
-            </div>
-          </div>
-        </header>
-
-        <SharedBatchFromHash />
-
-        <Routes>
-          <Route path="/" element={<HomePage />} />
-          <Route path="/matrix" element={<EntityMatrixPage />} />
-          <Route path="/glossary" element={<GlossaryPage />} />
-        </Routes>
-      </div>
-    </ClaimWorkspaceProvider>
+          <Routes>
+            <Route path="/" element={<HomePage />} />
+            <Route path="/matrix" element={<EntityMatrixPage />} />
+            <Route path="/glossary" element={<GlossaryPage />} />
+          </Routes>
+        </div>
+      </ClaimWorkspaceProvider>
+    </RainbowKitProvider>
   );
 }
 

@@ -1,9 +1,10 @@
-import { useEffect, useRef, useState, useCallback } from 'react';
+import { useEffect, useMemo, useRef, useState, useCallback } from 'react';
 import * as d3 from 'd3';
 import { ATOM_HIERARCHY, type HierarchyNode } from '../data/hierarchy';
 import { getAtomColor } from '../lib/atom-colors';
 import { useBodyScrollLock } from '../lib/use-body-scroll-lock';
 import { D3_RESET_DURATION_MS } from '../lib/timings';
+import { useLiveAtoms } from '../intuition/hooks/use-live-atoms';
 
 interface AtomTreeProps {
   selectedTypeId: string | null;
@@ -19,6 +20,21 @@ export function AtomTree({ selectedTypeId, onSelectType, globalSearchQuery }: At
   const [hasInteracted, setHasInteracted] = useState(false);
 
   const searchQuery = globalSearchQuery || '';
+
+  // Live atoms from the indexer — aggregated per type so each tree node
+  // can surface a small live-count badge next to its label, making the
+  // schema view concretely reflect on-chain activity. Falls back
+  // silently to a no-count tree when the indexer is unreachable.
+  const liveAtomsQuery = useLiveAtoms({ limit: 5000 });
+  const liveCountsByType = useMemo(() => {
+    const map = new Map<string, number>();
+    const atoms = liveAtomsQuery.data;
+    if (atoms === undefined) return map;
+    for (const atom of atoms) {
+      map.set(atom.type, (map.get(atom.type) ?? 0) + 1);
+    }
+    return map;
+  }, [liveAtomsQuery.data]);
 
   // Stable callback ref so D3 event handlers don't go stale
   const onSelectTypeRef = useRef(onSelectType);
@@ -157,7 +173,15 @@ export function AtomTree({ selectedTypeId, onSelectType, globalSearchQuery }: At
         return 1;
       });
 
-    // Labels
+    // Labels — append the live count next to a type's label when the
+    // indexer reports any atom of that type (e.g., `Person · 12`).
+    // Keeps the schema view but makes the on-chain volume visible at
+    // a glance.
+    const labelFor = (d: { data: HierarchyNode }): string => {
+      const count = liveCountsByType.get(d.data.id) ?? 0;
+      return count > 0 ? `${d.data.label} · ${count}` : d.data.label;
+    };
+
     node
       .append('text')
       .attr('dy', '0.31em')
@@ -168,7 +192,7 @@ export function AtomTree({ selectedTypeId, onSelectType, globalSearchQuery }: At
       .attr('transform', (d) =>
         (d.x ?? 0) >= Math.PI ? 'rotate(180)' : null
       )
-      .text((d) => d.data.label)
+      .text(labelFor)
       .attr('fill', (d) =>
         d.data.id === selectedTypeId
           ? 'var(--color-text)'
@@ -182,7 +206,7 @@ export function AtomTree({ selectedTypeId, onSelectType, globalSearchQuery }: At
         return 1;
       });
 
-  }, [selectedTypeId, isFullscreen, searchQuery]);
+  }, [selectedTypeId, isFullscreen, searchQuery, liveCountsByType]);
 
   return (
     <div className={isFullscreen ? 'fixed inset-0 z-50 bg-[var(--color-bg)] p-6 overflow-auto' : ''}>
@@ -190,7 +214,9 @@ export function AtomTree({ selectedTypeId, onSelectType, globalSearchQuery }: At
         {/* Glass header overlay */}
         <div className="absolute inset-x-0 top-0 z-10 rounded-t-xl p-6" style={{ background: 'linear-gradient(to bottom, var(--color-surface) 0%, color-mix(in srgb, var(--color-surface) 80%, transparent) 50%, transparent 100%)' }}>
           <div className="flex items-center justify-between">
-            <h2 className="text-lg font-semibold text-[var(--color-text)]">Entity Hierarchy</h2>
+            <div className="flex items-center gap-3">
+              <h2 className="text-lg font-semibold text-[var(--color-text)]">Entity Hierarchy</h2>
+            </div>
             <div className="flex items-center gap-1 shrink-0">
               {(hasInteracted || selectedTypeId) && (
                 <button
@@ -225,6 +251,11 @@ export function AtomTree({ selectedTypeId, onSelectType, globalSearchQuery }: At
   );
 }
 
+/**
+ * Mirrors the relationship-graph status pill — surfaces the indexer
+ * query state at all times so live wiring is visible even when no type
+ * happens to have a count yet.
+ */
 // ─── Icons ──────────────────────────────────────────────────
 
 function FullscreenIcon() {

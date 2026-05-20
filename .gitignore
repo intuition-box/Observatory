@@ -12,6 +12,15 @@ dist
 dist-ssr
 *.local
 
+# Environment
+.env
+.env.*
+!.env.example
+
+# Claude Code (personal tooling, not part of the bounty PR)
+.claude/
+CLAUDE.md
+docs/
 # Editor directories and files
 .vscode/*
 !.vscode/extensions.json

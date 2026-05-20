@@ -32,8 +32,11 @@ export interface ClaimWorkspace {
 
   /** Append a claim to history. */
   saveClaim: (claim: Omit<ClaimEntry, 'id' | 'timestamp'>) => void;
-  /** Append a claim to the current export batch. */
-  addToBatch: (claim: Omit<ClaimEntry, 'id' | 'timestamp'>) => void;
+  /** Append a claim to the current export batch. Returns false when a
+   *  semantically identical entry (same subject+predicate+object) is
+   *  already queued — duplicates would publish to the same onchain
+   *  triple twice, which the protocol rejects. */
+  addToBatch: (claim: Omit<ClaimEntry, 'id' | 'timestamp'>) => boolean;
   /** Restore a past claim into the builder form. */
   restoreClaim: (entry: ClaimEntry) => void;
   /** Fill the builder from a (subject, predicate, object) triple selection. */

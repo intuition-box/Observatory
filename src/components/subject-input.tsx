@@ -5,6 +5,7 @@ import { SUBJECT_CLASSIFY_DEBOUNCE_MS } from '../lib/timings';
 import { useDebounce } from '../lib/use-debounce';
 import { ATOM_TYPES, ATOM_CATEGORIES, type AtomType, type AtomCategory } from '../data/atom-types';
 import { EXAMPLE_CLAIMS, type ExampleClaim } from '../data/example-claims';
+import { useLiveExamples } from '../intuition/hooks/use-live-examples';
 import { TypeBadge } from './type-badge';
 
 /** Quick picks shown in the compact type selector */
@@ -28,6 +29,10 @@ export function SubjectInput({ value, onChange, selectedType, onTypeChange, onEx
   });
   const [showTypePicker, setShowTypePicker] = useState(false);
   const [showAllTypes, setShowAllTypes] = useState(false);
+  // Read-only "Related onchain" section: real live triples whose
+  // subject matches the selected type — informational so users can see
+  // what exists and craft a complementary claim, never a duplicate.
+  const { examples: relatedOnchain } = useLiveExamples({ subjectTypeId: selectedType });
   const isSelf = isSelfSubject(selectedType);
 
   // Debounce typing before classifying so we don't thrash the picker state
@@ -135,32 +140,62 @@ export function SubjectInput({ value, onChange, selectedType, onTypeChange, onEx
         <AllTypePicker selectedType={selectedType} onSelect={handleTypeSelect} />
       )}
 
-      {/* Example claims for selected type, using the user's input as subject */}
+      {/* Static templates the user can click to fill the form — kept
+          as authored prompts (Billy, Alice Johnson, etc.) so it's
+          obvious they are templates, never live on-chain entities. */}
       {selectedType && EXAMPLE_CLAIMS[selectedType] && onExampleClick && value.trim() && (
         <div className="space-y-1">
           <span className="text-[10px] font-semibold uppercase tracking-wider text-[var(--color-text-muted)]">
             Examples
           </span>
           {EXAMPLE_CLAIMS[selectedType].map((example, i) => {
-            const personalized: ExampleClaim = {
-              ...example,
-              subject: isSelf ? 'I' : value.trim(),
-            };
+            const displayedSubject = isSelf ? 'I' : example.subject;
             const shownPredicate = isSelf
               ? conjugateForSelf(example.predicateId, example.predicateLabel)
               : example.predicateLabel;
             return (
               <button
                 key={i}
-                onClick={() => onExampleClick(personalized)}
+                onClick={() => onExampleClick(example)}
                 className="focus-ring flex w-full items-center gap-1.5 rounded-md px-2 py-1 text-xs text-left text-[var(--color-text-secondary)] hover:bg-[var(--color-surface-hover)] transition-colors"
               >
-                <span className="text-[var(--color-text)] truncate">{personalized.subject}</span>
+                <span className="text-[var(--color-text)] truncate">{displayedSubject}</span>
                 <span className="text-[var(--color-text-muted)]">—</span>
                 <span className="text-[var(--color-accent)]">{shownPredicate}</span>
                 <span className="text-[var(--color-text-muted)]">—</span>
                 <span className="text-[var(--color-text)]">{example.object}</span>
               </button>
+            );
+          })}
+        </div>
+      )}
+
+      {/* Read-only "Related onchain" — real triples already published
+          for this subject type. Shown so users can see what exists and
+          author complementary claims (never a duplicate). Hidden when
+          the indexer returns nothing for this type so the input stays
+          uncluttered. */}
+      {selectedType && relatedOnchain.length > 0 && (
+        <div className="space-y-1 pt-1">
+          <span className="text-[10px] font-semibold uppercase tracking-wider text-[var(--color-accent)]/80">
+            Related onchain
+          </span>
+          {relatedOnchain.map((claim, i) => {
+            const shownPredicate = isSelf
+              ? conjugateForSelf(claim.predicateId, claim.predicateLabel)
+              : claim.predicateLabel;
+            return (
+              <div
+                key={`related-${claim.subject}-${claim.predicateId}-${claim.object}-${i}`}
+                className="flex items-center gap-1.5 rounded-md px-2 py-1 text-xs text-[var(--color-text-secondary)]"
+                title={`${claim.subject} ${shownPredicate} ${claim.object} — already onchain`}
+              >
+                <span className="text-[var(--color-text)] truncate">{claim.subject}</span>
+                <span className="text-[var(--color-text-muted)]">—</span>
+                <span className="text-[var(--color-accent)]">{shownPredicate}</span>
+                <span className="text-[var(--color-text-muted)]">—</span>
+                <span className="text-[var(--color-text)] truncate">{claim.object}</span>
+              </div>
             );
           })}
         </div>

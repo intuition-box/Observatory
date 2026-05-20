@@ -4,6 +4,7 @@ import { ATOM_TYPES, ATOM_CATEGORIES, type AtomCategory } from '../data/atom-typ
 import { PREDICATES } from '../data/predicates';
 import { useBodyScrollLock } from '../lib/use-body-scroll-lock';
 import { D3_RESET_DURATION_MS } from '../lib/timings';
+import { useLiveTriples } from '../intuition/hooks/use-live-triples';
 
 interface RelationshipGraphProps {
   highlightTypeId: string | null;
@@ -95,6 +96,34 @@ export function RelationshipGraph({ highlightTypeId, onSelectType, searchQuery }
 
   // Build graph data once — derived purely from module-level constants
   const { nodes: graphNodes, links: graphLinks } = useMemo(() => buildGraph(), []);
+
+  // Live data: aggregate the indexer's recent triples by (subject.type,
+  // object.type) so we can paint edges that carry actual on-chain
+  // activity differently from purely-schema edges. Falls back gracefully
+  // when the indexer is empty or unreachable — the graph still renders
+  // its static schema view.
+  const liveTriplesQuery = useLiveTriples({ limit: 5000 });
+  const liveCountsByTypePair = useMemo(() => {
+    const map = new Map<string, number>();
+    const triples = liveTriplesQuery.data;
+    if (triples === undefined) return map;
+    for (const triple of triples) {
+      // Subject / object atoms can be null in the indexer schema when an
+      // atom row has been pruned but the triple still references it.
+      // Skip those — they would crash and don't carry useful type signal.
+      if (
+        triple.subject === null ||
+        triple.subject === undefined ||
+        triple.object === null ||
+        triple.object === undefined
+      ) {
+        continue;
+      }
+      const key = `${triple.subject.type}→${triple.object.type}`;
+      map.set(key, (map.get(key) ?? 0) + 1);
+    }
+    return map;
+  }, [liveTriplesQuery.data]);
 
   // Auto-reset when selection is cleared externally (e.g., Entity Hierarchy Reset)
   useEffect(() => {
@@ -206,7 +235,8 @@ export function RelationshipGraph({ highlightTypeId, onSelectType, searchQuery }
       .force('center', d3.forceCenter(0, 0))
       .force('collide', d3.forceCollide(30));
 
-    // Links
+    // Links — initial visuals; live-data effect refines stroke + color
+    // once the indexer query resolves.
     const link = g
       .append('g')
       .selectAll<SVGLineElement, GraphLinkRaw>('line')
@@ -330,6 +360,49 @@ export function RelationshipGraph({ highlightTypeId, onSelectType, searchQuery }
       .attr('viewBox', `${-width / 2 + offsetX} ${-height / 2 + offsetY} ${width} ${height}`);
   }, [isFullscreen]);
 
+  // Repaint links when live-triple counts arrive: edges carrying real
+  // on-chain activity get an accent-tinted stroke and a thickness boost
+  // proportional to the number of indexed triples on that type pair.
+  // Skipped if a type filter is active — the highlight effect owns the
+  // link styling in that case.
+  useEffect(() => {
+    const link = linkSelRef.current;
+    if (link === null || highlightTypeId !== null) return;
+    link
+      .attr('stroke-width', (d) => {
+        const srcId = endpointId(d.source);
+        const tgtId = endpointId(d.target);
+        const liveCount =
+          srcId !== null && tgtId !== null
+            ? liveCountsByTypePair.get(`${srcId}→${tgtId}`) ?? 0
+            : 0;
+        // Live edges get a 2x thickness multiplier so they stand out
+        // even in a dense schema graph; capped at 6 to stay readable.
+        return liveCount > 0
+          ? Math.min(2 + liveCount * 0.4, 6)
+          : Math.min(d.predicateCount, 5) * 0.5 + 0.5;
+      })
+      .attr('stroke', (d) => {
+        const srcId = endpointId(d.source);
+        const tgtId = endpointId(d.target);
+        const liveCount =
+          srcId !== null && tgtId !== null
+            ? liveCountsByTypePair.get(`${srcId}→${tgtId}`) ?? 0
+            : 0;
+        return liveCount > 0 ? 'var(--color-accent)' : 'var(--color-border)';
+      })
+      .attr('stroke-opacity', (d) => {
+        const srcId = endpointId(d.source);
+        const tgtId = endpointId(d.target);
+        const liveCount =
+          srcId !== null && tgtId !== null
+            ? liveCountsByTypePair.get(`${srcId}→${tgtId}`) ?? 0
+            : 0;
+        return liveCount > 0 ? 0.95 : 0.6;
+      });
+  }, [liveCountsByTypePair, highlightTypeId]);
+
+
   // Visible-node count for the aria-live status region. Derived from the same
   // filtering rules as the highlighting effect so screen readers match what's
   // rendered.
@@ -436,7 +509,9 @@ export function RelationshipGraph({ highlightTypeId, onSelectType, searchQuery }
         {/* Glass header overlay */}
         <div className="absolute inset-x-0 top-0 z-10 rounded-t-xl p-6" style={{ background: 'linear-gradient(to bottom, var(--color-surface) 0%, color-mix(in srgb, var(--color-surface) 80%, transparent) 50%, transparent 100%)' }}>
           <div className="flex items-center justify-between">
-            <h2 className="text-lg font-semibold text-[var(--color-text)]">Entity Relationship</h2>
+            <div className="flex items-center gap-3">
+              <h2 className="text-lg font-semibold text-[var(--color-text)]">Entity Relationship</h2>
+            </div>
             <div className="flex items-center gap-1 shrink-0">
               {(hasInteracted || highlightTypeId) && (
                 <button
@@ -476,6 +551,12 @@ export function RelationshipGraph({ highlightTypeId, onSelectType, searchQuery }
   );
 }
 
+/**
+ * Renders a small pill describing the indexer query state. Visible at
+ * all times so it's obvious whether the live wiring is reaching the
+ * indexer — switches between loading / error / count / empty without
+ * blocking the schema graph behind it.
+ */
 // ─── Icons ──────────────────────────────────────────────────
 
 function FullscreenIcon() {

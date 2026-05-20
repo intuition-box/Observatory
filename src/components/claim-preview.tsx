@@ -10,6 +10,22 @@ interface ClaimPreviewProps {
   objectType: string | null;
   onSave?: () => void;
   onAddToBatch?: () => void;
+  /**
+   * Callback invoked when the user wants to publish the claim on-chain.
+   * If omitted, the on-chain button is hidden — letting the component stay
+   * usable in offline / preview-only contexts.
+   */
+  onPublishOnchain?: () => void;
+  /** Disables the on-chain button and shows a "Publishing…" label. */
+  isPublishing?: boolean;
+  /**
+   * When false, the on-chain button is rendered disabled with a tooltip
+   * hinting at the missing precondition (wallet not connected, session
+   * not loaded, etc.). The text is supplied by the caller.
+   */
+  canPublish?: boolean;
+  /** Tooltip / disabled-state hint shown when `canPublish` is false. */
+  publishHint?: string;
 }
 
 export function ClaimPreview({
@@ -20,6 +36,10 @@ export function ClaimPreview({
   objectType,
   onSave,
   onAddToBatch,
+  onPublishOnchain,
+  isPublishing,
+  canPublish,
+  publishHint,
 }: ClaimPreviewProps) {
   const hasSubject = subject.trim().length > 0;
   const hasPredicate = predicateId !== null;
@@ -118,7 +138,7 @@ export function ClaimPreview({
             />
           )}
 
-          <div className="mt-3 flex items-center gap-2">
+          <div className="mt-3 flex flex-wrap items-center gap-2">
             {onSave && (
               <button
                 onClick={onSave}
@@ -133,6 +153,16 @@ export function ClaimPreview({
                 className="focus-ring rounded-md px-3 py-1.5 text-xs font-medium bg-[var(--color-surface-hover)] text-[var(--color-text-secondary)] hover:text-[var(--color-text)] transition-colors"
               >
                 Add to Batch
+              </button>
+            )}
+            {onPublishOnchain && (
+              <button
+                onClick={onPublishOnchain}
+                disabled={canPublish === false || isPublishing === true}
+                title={canPublish === false ? publishHint : undefined}
+                className="focus-ring rounded-md px-3 py-1.5 text-xs font-medium border border-[var(--color-accent)] text-[var(--color-accent)] hover:bg-[var(--color-accent)] hover:text-black disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:bg-transparent disabled:hover:text-[var(--color-accent)] transition-colors"
+              >
+                {isPublishing === true ? 'Publishing…' : 'Publish onchain'}
               </button>
             )}
           </div>
