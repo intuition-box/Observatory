@@ -10,6 +10,11 @@ interface ClaimPreviewProps {
   objectType: string | null;
   onSave?: () => void;
   onAddToBatch?: () => void;
+  onSubmitOnchain?: () => void;
+  onchainStatus?: 'idle' | 'submitting' | 'confirming' | 'success' | 'error';
+  onchainError?: string | null;
+  onchainTxHash?: string | null;
+  canSubmitOnchain?: boolean;
 }
 
 export function ClaimPreview({
@@ -20,6 +25,11 @@ export function ClaimPreview({
   objectType,
   onSave,
   onAddToBatch,
+  onSubmitOnchain,
+  onchainStatus = 'idle',
+  onchainError,
+  onchainTxHash,
+  canSubmitOnchain,
 }: ClaimPreviewProps) {
   const hasSubject = subject.trim().length > 0;
   const hasPredicate = predicateId !== null;
@@ -135,7 +145,38 @@ export function ClaimPreview({
                 Add to Batch
               </button>
             )}
+            {onSubmitOnchain && (
+              <button
+                onClick={onSubmitOnchain}
+                disabled={!canSubmitOnchain || onchainStatus === 'submitting' || onchainStatus === 'confirming'}
+                className={`focus-ring rounded-md px-3 py-1.5 text-xs font-medium transition-colors ${
+                  onchainStatus === 'success'
+                    ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30'
+                    : onchainStatus === 'error'
+                      ? 'bg-red-500/20 text-red-400 border border-red-500/30'
+                      : canSubmitOnchain
+                        ? 'bg-blue-500/20 text-blue-400 border border-blue-500/30 hover:bg-blue-500/30'
+                        : 'bg-[var(--color-surface-hover)] text-[var(--color-text-muted)] cursor-not-allowed opacity-50'
+                }`}
+              >
+                {onchainStatus === 'submitting' && '⏳ Signing...'}
+                {onchainStatus === 'confirming' && '⛓️ Confirming...'}
+                {onchainStatus === 'success' && '✓ Onchain!'}
+                {onchainStatus === 'error' && '✕ Failed'}
+                {onchainStatus === 'idle' && '⛓️ Submit Onchain'}
+              </button>
+            )}
           </div>
+
+          {onchainStatus === 'success' && onchainTxHash && (
+            <p className="mt-2 text-xs text-emerald-400/70">
+              Tx: <a href={`https://basescan.org/tx/${onchainTxHash}`} target="_blank" rel="noopener noreferrer" className="underline hover:text-emerald-300">{onchainTxHash.slice(0, 10)}...{onchainTxHash.slice(-8)}</a>
+            </p>
+          )}
+
+          {onchainStatus === 'error' && onchainError && (
+            <p className="mt-2 text-xs text-red-400/70">{onchainError}</p>
+          )}
         </>
       )}
     </div>

@@ -20,10 +20,15 @@ interface ClaimBuilderProps {
   onPredicateChange?: (predicateId: string | null) => void;
   onSave?: (claim: Omit<ClaimEntry, 'id' | 'timestamp'>) => void;
   onAddToBatch?: (claim: Omit<ClaimEntry, 'id' | 'timestamp'>) => void;
+  onSubmitOnchain?: (subject: string, subjectType: string | null) => void;
+  onchainStatus?: 'idle' | 'submitting' | 'confirming' | 'success' | 'error';
+  onchainError?: string | null;
+  onchainTxHash?: string | null;
+  canSubmitOnchain?: boolean;
 }
 
 export const ClaimBuilder = forwardRef<ClaimBuilderHandle, ClaimBuilderProps>(
-  function ClaimBuilder({ onSubjectTypeChange, onSubjectValueChange, onPredicateChange, onSave, onAddToBatch }, ref) {
+  function ClaimBuilder({ onSubjectTypeChange, onSubjectValueChange, onPredicateChange, onSave, onAddToBatch, onSubmitOnchain, onchainStatus, onchainError, onchainTxHash, canSubmitOnchain }, ref) {
     const [subject, setSubject] = useState('');
     const [subjectType, setSubjectType] = useState<string | null>(null);
     const [predicateId, setPredicateId] = useState<string | null>(null);
@@ -172,6 +177,11 @@ export const ClaimBuilder = forwardRef<ClaimBuilderHandle, ClaimBuilderProps>(
             objectType={objectType}
             onSave={onSave ? handleSave : undefined}
             onAddToBatch={onAddToBatch ? handleAddToBatch : undefined}
+            onSubmitOnchain={onSubmitOnchain ? () => onSubmitOnchain(subject, subjectType) : undefined}
+            onchainStatus={onchainStatus}
+            onchainError={onchainError}
+            onchainTxHash={onchainTxHash}
+            canSubmitOnchain={canSubmitOnchain}
           />
         </div>
       </div>

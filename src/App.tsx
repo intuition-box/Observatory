@@ -1,5 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { Routes, Route, NavLink, useNavigate, useLocation } from 'react-router-dom';
+import { ConnectButton } from '@rainbow-me/rainbowkit';
+import { isDemoMode, networkName } from './config/env';
 
 import { GlobalSearchInput } from './components/global-search-input';
 import { TutorialOverlay, useTutorial } from './components/tutorial-overlay';
@@ -122,7 +124,27 @@ export default function App() {
               />
             </div>
 
-            <div className="flex items-center gap-1 shrink-0">
+            <div className="flex items-center gap-2 shrink-0">
+              {/* Network indicator */}
+              {isDemoMode ? (
+                <span className="hidden sm:inline-flex items-center gap-1 px-2 py-1 rounded-md text-xs font-medium bg-amber-500/10 text-amber-400 border border-amber-500/20">
+                  <span className="w-1.5 h-1.5 rounded-full bg-amber-400 animate-pulse" />
+                  Demo Mode
+                </span>
+              ) : (
+                <span className="hidden sm:inline-flex items-center gap-1 px-2 py-1 rounded-md text-xs font-medium bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
+                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-400" />
+                  {networkName}
+                </span>
+              )}
+
+              {/* Wallet Connect */}
+              <ConnectButton
+                chainStatus="icon"
+                accountStatus="avatar"
+                showBalance={false}
+              />
+
               <button
                 onClick={openTutorial}
                 className="focus-ring h-8 w-8 inline-flex items-center justify-center rounded-md text-[var(--color-text-muted)] bg-[var(--color-surface-raised)] transition-colors hover:bg-[var(--color-surface-hover)] hover:text-[var(--color-text)]"
