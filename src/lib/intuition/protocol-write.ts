@@ -1,8 +1,10 @@
 import {
   createAtomFromString,
   createTripleStatement,
+  multiVaultDeposit,
   multiVaultGetAtomCost,
   multiVaultGetGeneralConfig,
+  multiVaultGetInverseTripleId,
   multiVaultGetTripleCost,
   wait,
 } from '@0xintuition/sdk';
@@ -64,6 +66,58 @@ export async function estimateOntologyProposalCost(
   }
 
   return atomCost * BigInt(newAtoms) + triplePayment;
+}
+
+/**
+ * Stake on a proposal — agreement or dissent.
+ *
+ * Agreeing deposits into the triple's own vault. Disagreeing deposits into the
+ * *counter-triple's* vault, which is a distinct term with its own id; the
+ * contract derives it, so we ask the chain rather than assuming.
+ *
+ * The amount defaults to the protocol's `minDeposit`. A vote here is a signal,
+ * not a position size — anyone wanting real exposure should use the Portal,
+ * which is built for it.
+ */
+export async function stakeOnTriple(
+  config: WriteConfig,
+  tripleTermId: `0x${string}`,
+  side: 'for' | 'against',
+  onProgress?: (message: string) => void
+): Promise<`0x${string}`> {
+  const account = config.walletClient.account;
+  if (!account) {
+    throw new Error('Wallet account is not available.');
+  }
+
+  const generalConfig = await multiVaultGetGeneralConfig(config);
+  const amount = generalConfig.minDeposit;
+
+  let termId = tripleTermId;
+  if (side === 'against') {
+    onProgress?.('Resolving counter-triple…');
+    termId = await multiVaultGetInverseTripleId(config, { args: [tripleTermId] });
+  }
+
+  await assertWalletBalance(config, amount);
+
+  onProgress?.(side === 'for' ? 'Staking in favour…' : 'Staking against…');
+
+  const txHash = await multiVaultDeposit(config, {
+    // [receiver, termId, curveId, minShares] — curve 1 is the default bonding
+    // curve the indexer reports positions against.
+    args: [account.address, termId, 1n, 0n],
+    value: amount,
+  });
+
+  if (!txHash) {
+    throw new Error('Deposit failed.');
+  }
+
+  onProgress?.('Indexing your stake…');
+  await wait(txHash, INDEX_WAIT_OPTIONS);
+
+  return txHash;
 }
 
 /**

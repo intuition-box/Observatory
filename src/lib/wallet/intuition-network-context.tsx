@@ -27,6 +27,8 @@ type NetworkDefinition = {
   chain: Chain;
   chainId: IntuitionChainId;
   graphqlUrl: string;
+  /** Intuition Portal — the canonical UI for inspecting a term. */
+  portalUrl: string;
 };
 
 const NETWORKS: Record<OnchainIntuitionNetworkId, NetworkDefinition> = {
@@ -36,6 +38,7 @@ const NETWORKS: Record<OnchainIntuitionNetworkId, NetworkDefinition> = {
     chain: intuitionMainnet,
     chainId: INTUITION_MAINNET_CHAIN_ID,
     graphqlUrl: API_URL_PROD,
+    portalUrl: 'https://portal.intuition.systems',
   },
   testnet: {
     id: 'testnet',
@@ -43,6 +46,7 @@ const NETWORKS: Record<OnchainIntuitionNetworkId, NetworkDefinition> = {
     chain: intuitionTestnet,
     chainId: INTUITION_TESTNET_CHAIN_ID,
     graphqlUrl: API_URL_DEV,
+    portalUrl: 'https://dev.portal.intuition.systems',
   },
 };
 
@@ -64,6 +68,12 @@ type IntuitionNetworkContextValue = {
   networkLabel: string;
   graphqlUrl: string;
   isStaticNetwork: boolean;
+  /**
+   * Portal URL for a triple on the active network, or null in Standard mode
+   * where there is no chain to link to.
+   */
+  portalTripleUrl: (termId: string) => string | null;
+  portalAtomUrl: (termId: string) => string | null;
 };
 
 const IntuitionNetworkContext = createContext<IntuitionNetworkContextValue | null>(null);
@@ -104,6 +114,10 @@ export function IntuitionNetworkProvider({ children }: { children: ReactNode }) 
       networkLabel: isStaticNetwork ? 'Standard' : definition.label,
       graphqlUrl,
       isStaticNetwork,
+      portalTripleUrl: (termId: string) =>
+        isStaticNetwork ? null : `${definition.portalUrl}/explore/triple/${termId}`,
+      portalAtomUrl: (termId: string) =>
+        isStaticNetwork ? null : `${definition.portalUrl}/explore/atom/${termId}`,
     }),
     [network, setNetwork, definition, graphqlUrl, isStaticNetwork]
   );

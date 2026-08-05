@@ -23,6 +23,8 @@ import { useSlotProposals, type SlotProposalView } from '../lib/intuition/use-sl
 import type { OntologySlotProposal } from '../lib/intuition/ontology-slots';
 import { ONTOLOGY_SLOT_PREDICATE_LABEL } from '../lib/intuition/ontology-vocabulary';
 import { BackerAvatars } from './backer-avatars';
+import { PortalTripleLink } from './portal-triple-link';
+import { ProposalVoteActions } from './proposal-vote-actions';
 import { getPredicateRule } from '../lib/intuition/predicate-resolution';
 import { useIntuitionNetwork } from '../lib/wallet/intuition-network-context';
 
@@ -267,6 +269,7 @@ function PredicateDialogBody({
   const subjectAtom = ATOM_TYPES.find((t) => t.id === mapping.subjectType);
   const objectAtom = ATOM_TYPES.find((t) => t.id === mapping.objectType);
   const firstRef = useRef<HTMLButtonElement>(null);
+  const { setNetwork } = useIntuitionNetwork();
 
   const curatedIds = useMemo(
     () => mapping.predicates.map((p) => p.id),
@@ -345,11 +348,58 @@ function PredicateDialogBody({
           <p className="text-xs text-[var(--color-text-muted)] px-2">
             {isStaticNetwork
               ? 'No static predicates for this slot.'
-              : 'No on-chain proposals yet for this slot on the selected network. Use the Claim Builder to propose a predicate.'}
+              : 'No on-chain proposals yet for this slot on the selected network.'}
           </p>
         )}
       </div>
+
+      {/* Adding a predicate is the point of the dialog, so it stays visible
+          whether or not anything has been proposed yet. An empty predicate id
+          prefills the builder with both entity types and leaves the verb open —
+          which is exactly the hole being proposed into. */}
+      <DialogClose
+        render={
+          <button
+            type="button"
+            onClick={() => {
+              // Standard mode has no builder to land in; proposing means
+              // moving to a live network first.
+              if (isStaticNetwork) setNetwork('mainnet');
+              onSelect('');
+            }}
+            className="focus-ring mt-1 flex w-full items-center gap-2 rounded-md border border-dashed border-[var(--color-border)] px-3 py-2.5 text-left text-sm text-[var(--color-text-secondary)] transition-colors hover:border-[var(--color-accent)]/50 hover:bg-[var(--color-surface-hover)] hover:text-[var(--color-text)]"
+          >
+            <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-[var(--color-accent)] text-black">
+              <PlusIcon />
+            </span>
+            Propose your own predicate for this slot
+            {isStaticNetwork && (
+              <span className="ml-auto text-[10px] text-[var(--color-text-muted)]">
+                switches to Mainnet
+              </span>
+            )}
+          </button>
+        }
+      />
     </>
+  );
+}
+
+function PlusIcon() {
+  return (
+    <svg
+      width="12"
+      height="12"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="3"
+      strokeLinecap="round"
+      aria-hidden
+    >
+      <line x1="12" y1="5" x2="12" y2="19" />
+      <line x1="5" y1="12" x2="19" y2="12" />
+    </svg>
   );
 }
 
@@ -417,7 +467,11 @@ function ProposalSection({
               />
 
               {item.tripleTermId && (
-                <BackerAvatars tripleTermId={item.tripleTermId} compact />
+                <>
+                  <BackerAvatars tripleTermId={item.tripleTermId} compact />
+                  <ProposalVoteActions tripleTermId={item.tripleTermId} />
+                  <PortalTripleLink termId={item.tripleTermId} />
+                </>
               )}
             </div>
           );
