@@ -8,6 +8,7 @@ import { PackageEntityHierarchy } from '../components/package-entity-hierarchy';
 import { PackageEntityRelationship } from '../components/package-entity-relationship';
 import { PackageEntitySchema } from '../components/package-entity-schema';
 import { PackagePredicateExplorer } from '../components/package-predicate-explorer';
+import { TripleProposalDiagram } from '../components/triple-proposal-diagram';
 import { ClaimHistory } from '../components/claim-history';
 import { BatchBuilder } from '../components/batch-builder';
 import { useClaimWorkspace } from '../lib/use-claim-workspace';
@@ -75,6 +76,8 @@ export function HomePage() {
             />
             <PackageEntityRelationship selectedSlug={selectedSlug} />
           </div>
+
+          <TripleProposalDiagram selectedSlug={selectedSlug} />
 
           <div data-tutorial-step="predicate-explorer">
             <PackagePredicateExplorer searchQuery={searchQuery} />
