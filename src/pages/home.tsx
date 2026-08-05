@@ -1,11 +1,13 @@
+import { useState } from 'react';
 import { Link } from 'react-router-dom';
 
 import { ClaimBuilder } from '../components/claim-builder';
 import { OntologyClaimCallout } from '../components/ontology-claim-callout';
-import { SchemaPanel } from '../components/schema-panel';
-import { AtomTree } from '../components/atom-tree';
-import { RelationshipGraph } from '../components/relationship-graph';
-import { PredicateExplorer } from '../components/predicate-explorer';
+import { OntologyModesExplainer } from '../components/ontology-modes-explainer';
+import { PackageEntityHierarchy } from '../components/package-entity-hierarchy';
+import { PackageEntityRelationship } from '../components/package-entity-relationship';
+import { PackageEntitySchema } from '../components/package-entity-schema';
+import { PackagePredicateExplorer } from '../components/package-predicate-explorer';
 import { ClaimHistory } from '../components/claim-history';
 import { BatchBuilder } from '../components/batch-builder';
 import { useClaimWorkspace } from '../lib/use-claim-workspace';
@@ -18,19 +20,23 @@ export function HomePage() {
   const { graphqlUrl, isStaticNetwork, networkLabel } = useIntuitionNetwork();
   const liveOntology = useOnchainOntologyMatrix(!isStaticNetwork, graphqlUrl);
   const {
-    selectedTypeId,
     setSelectedTypeId,
-    selectedPredicateId,
     setSelectedPredicateId,
     claimBuilderRef,
     searchQuery,
     saveClaim,
     addToBatch,
-    fillFromMatrix,
   } = useClaimWorkspace();
+
+  // Standard mode is keyed by package classification slug (`music-recording`),
+  // not by this app's curated type ids (`MusicRecording`) — the two vocabularies
+  // are reconciled but not identical, so selection state is kept separate.
+  const [selectedSlug, setSelectedSlug] = useState<string | null>(null);
 
   return (
     <main className="px-4 sm:px-6 py-8 space-y-8">
+      <OntologyModesExplainer />
+
       {!isStaticNetwork && (
         <>
           <div className="space-y-3" data-tutorial-step="claim-builder">
@@ -57,31 +63,21 @@ export function HomePage() {
 
       {isStaticNetwork && (
         <>
-          <StaticReferenceNotice />
-
           <div
-            className="grid grid-cols-1 gap-2 lg:grid-cols-3"
+            className="grid min-h-[26rem] grid-cols-1 gap-2 lg:grid-cols-3"
             data-tutorial-step="entity-schema"
           >
-            <SchemaPanel selectedTypeId={selectedTypeId} searchQuery={searchQuery} />
-            <AtomTree
-              selectedTypeId={selectedTypeId}
-              onSelectType={setSelectedTypeId}
-              globalSearchQuery={searchQuery}
-            />
-            <RelationshipGraph
-              highlightTypeId={selectedTypeId}
-              onSelectType={setSelectedTypeId}
+            <PackageEntitySchema selectedSlug={selectedSlug} />
+            <PackageEntityHierarchy
+              selectedSlug={selectedSlug}
+              onSelect={setSelectedSlug}
               searchQuery={searchQuery}
             />
+            <PackageEntityRelationship selectedSlug={selectedSlug} />
           </div>
 
           <div data-tutorial-step="predicate-explorer">
-            <PredicateExplorer
-              selectedPredicateId={selectedPredicateId}
-              onSelectClaim={fillFromMatrix}
-              searchQuery={searchQuery}
-            />
+            <PackagePredicateExplorer searchQuery={searchQuery} />
           </div>
         </>
       )}
@@ -184,17 +180,6 @@ function MetricCard({ label, value }: { label: string; value: string }) {
         {label}
       </p>
       <p className="mt-1 text-lg font-semibold text-[var(--color-text)]">{value}</p>
-    </div>
-  );
-}
-
-function StaticReferenceNotice() {
-  return (
-    <div className="rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] p-4">
-      <p className="text-sm text-[var(--color-text-secondary)]">
-        Static ontology mode shows the local TypeScript reference: schema, hierarchy, relationship graph,
-        and curated predicates. Switch to Mainnet or Testnet to see protocol-backed live views.
-      </p>
     </div>
   );
 }

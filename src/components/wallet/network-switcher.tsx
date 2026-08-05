@@ -10,16 +10,12 @@ import {
   INTUITION_TESTNET_CHAIN_ID,
   type IntuitionChainId,
 } from '../../lib/wallet/intuition-chain';
+import { getOntologyMode, ONTOLOGY_MODES } from '../../lib/wallet/ontology-modes';
 import { ChevronDownIcon } from './wallet-icons';
-
-const NETWORK_OPTIONS: { id: IntuitionNetworkId; label: string }[] = [
-  { id: 'mainnet', label: 'Intuition' },
-  { id: 'testnet', label: 'Intuition Testnet' },
-  { id: 'static', label: 'Static ontology' },
-];
 
 export function NetworkSwitcher() {
   const { network, setNetwork, networkLabel } = useIntuitionNetwork();
+  const activeMode = getOntologyMode(network);
   const { isConnected, switchToActiveNetwork, isSwitching } = useIntuitionChain();
   const [open, setOpen] = useState(false);
   const rootRef = useRef<HTMLDivElement>(null);
@@ -77,9 +73,13 @@ export function NetworkSwitcher() {
         className="focus-ring h-8 inline-flex items-center gap-1.5 rounded-lg border border-[var(--color-border)] bg-[var(--color-surface-raised)] px-2 text-sm text-[var(--color-text)] transition-colors hover:bg-[var(--color-surface-hover)] disabled:opacity-60"
         aria-expanded={open}
         aria-haspopup="listbox"
-        aria-label={`Network: ${networkLabel}`}
+        aria-label={`Mode: ${networkLabel}`}
       >
-        <IntuitionNetworkIcon />
+        <ModeDot color={activeMode.color} />
+        {/* The label rides on the trigger, not just in the menu — which mode you
+            are in changes whether an action costs TRUST, so it must never be a
+            thing you have to open a dropdown to check. */}
+        <span className="font-medium">{activeMode.label}</span>
         <ChevronDownIcon open={open} />
       </button>
 
@@ -87,19 +87,31 @@ export function NetworkSwitcher() {
         <ul
           role="listbox"
           aria-label="Select Intuition network"
-          className="absolute right-0 z-50 mt-1 min-w-[11rem] overflow-hidden rounded-lg border border-[var(--color-border)] bg-[var(--color-surface-raised)] py-1 shadow-lg"
+          className="absolute right-0 z-50 mt-1 w-[17rem] overflow-hidden rounded-lg border border-[var(--color-border)] bg-[var(--color-surface-raised)] py-1 shadow-lg"
         >
-          {NETWORK_OPTIONS.map((option) => {
+          {ONTOLOGY_MODES.map((option) => {
             const isActive = option.id === network;
             return (
               <li key={option.id} role="option" aria-selected={isActive}>
                 <button
                   type="button"
                   onClick={() => void handleSelect(option.id)}
-                  className="focus-ring flex w-full items-center gap-2 px-3 py-2 text-left text-sm text-[var(--color-text)] hover:bg-[var(--color-surface-hover)]"
+                  className="focus-ring flex w-full items-start gap-2.5 px-3 py-2 text-left hover:bg-[var(--color-surface-hover)]"
                 >
-                  <IntuitionNetworkIcon />
-                  <span className="flex-1">{option.label}</span>
+                  <ModeDot color={option.color} className="mt-1" />
+                  <span className="flex-1 min-w-0">
+                    <span className="flex items-baseline gap-1.5">
+                      <span className="text-sm font-medium text-[var(--color-text)]">
+                        {option.label}
+                      </span>
+                      <span className="text-[10px] tabular-nums text-[var(--color-text-muted)]">
+                        step {option.step}
+                      </span>
+                    </span>
+                    <span className="mt-0.5 block text-xs leading-snug text-[var(--color-text-secondary)]">
+                      {option.summary}
+                    </span>
+                  </span>
                   {isActive && (
                     <svg
                       width="14"
@@ -110,7 +122,7 @@ export function NetworkSwitcher() {
                       strokeWidth="2.5"
                       strokeLinecap="round"
                       strokeLinejoin="round"
-                      className="shrink-0 text-[var(--color-accent)]"
+                      className="mt-1 shrink-0 text-[var(--color-accent)]"
                       aria-hidden
                     >
                       <polyline points="20 6 9 17 4 12" />
@@ -126,16 +138,13 @@ export function NetworkSwitcher() {
   );
 }
 
-function IntuitionNetworkIcon() {
+/** Colour-codes the mode so it is recognisable before the label is read. */
+function ModeDot({ color, className = '' }: { color: string; className?: string }) {
   return (
     <span
-      className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full border border-[var(--color-border)] bg-[var(--color-surface)]"
+      className={`h-2.5 w-2.5 shrink-0 rounded-full ${className}`}
+      style={{ backgroundColor: color, boxShadow: `0 0 0 3px ${color}22` }}
       aria-hidden
-    >
-      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-        <circle cx="12" cy="12" r="9" />
-        <circle cx="12" cy="12" r="3" />
-      </svg>
-    </span>
+    />
   );
 }

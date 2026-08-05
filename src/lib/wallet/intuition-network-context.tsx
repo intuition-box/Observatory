@@ -32,14 +32,14 @@ type NetworkDefinition = {
 const NETWORKS: Record<OnchainIntuitionNetworkId, NetworkDefinition> = {
   mainnet: {
     id: 'mainnet',
-    label: 'Intuition',
+    label: 'Mainnet',
     chain: intuitionMainnet,
     chainId: INTUITION_MAINNET_CHAIN_ID,
     graphqlUrl: API_URL_PROD,
   },
   testnet: {
     id: 'testnet',
-    label: 'Intuition Testnet',
+    label: 'Testnet',
     chain: intuitionTestnet,
     chainId: INTUITION_TESTNET_CHAIN_ID,
     graphqlUrl: API_URL_DEV,
@@ -69,9 +69,12 @@ type IntuitionNetworkContextValue = {
 const IntuitionNetworkContext = createContext<IntuitionNetworkContextValue | null>(null);
 
 export function IntuitionNetworkProvider({ children }: { children: ReactNode }) {
+  // Standard is the default: a first-time visitor should land on the settled,
+  // read-only vocabulary rather than on a live network where every action costs
+  // TRUST. Testnet and Mainnet are opt-in.
   const [network, setNetworkState] = useLocalStorage<IntuitionNetworkId>(
     'ontology-intuition-network',
-    'mainnet',
+    'static',
     { validate: isIntuitionNetworkId }
   );
 
@@ -98,7 +101,7 @@ export function IntuitionNetworkProvider({ children }: { children: ReactNode }) 
       setNetwork,
       activeChain: definition.chain,
       chainId: definition.chainId,
-      networkLabel: isStaticNetwork ? 'Static ontology' : definition.label,
+      networkLabel: isStaticNetwork ? 'Standard' : definition.label,
       graphqlUrl,
       isStaticNetwork,
     }),

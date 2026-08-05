@@ -30,7 +30,12 @@ import {
   PREDICATE_REGISTRY_ATOM_DATA,
   PREDICATE_REGISTRY_ATOM_ID,
 } from '@0xintuition/predicates';
-import { CLASSIFICATION_SLUGS, getClassification } from '@0xintuition/classifications';
+import {
+  CLASSIFICATION_SLUGS,
+  CLASSIFICATION_SPECS,
+  getClassification,
+  getMetadataPredicateMatrixFor,
+} from '@0xintuition/classifications';
 
 export type TermId = `0x${string}`;
 
@@ -208,6 +213,156 @@ export function hasCanonicalClassification(slug: string): boolean {
   return getClassification(slug) !== undefined;
 }
 
-export function getCanonicalClassification(slug: string) {
-  return getClassification(slug);
+export type ClassificationCategory =
+  | 'Entity'
+  | 'Creative Work'
+  | 'Media'
+  | 'Product'
+  | 'Web'
+  | 'Blockchain'
+  | 'Other';
+
+export interface CanonicalField {
+  key: string;
+  label: string;
+  description: string;
+  fieldType: string;
+  required: boolean;
+  placeholder?: string;
+  schemaProperty?: string;
+}
+
+export interface CanonicalClassification {
+  slug: string;
+  /** schema.org type name, e.g. `Person`. */
+  type: string;
+  displayName: string;
+  description: string;
+  category: ClassificationCategory;
+  schema: { context: string; type: string } | null;
+  fields: readonly CanonicalField[];
+  /** Predicate keys the registry recommends for this entity type. */
+  metadataPredicates: readonly string[];
+}
+
+/**
+ * Every classification the installed package defines.
+ *
+ * Widened to a plain interface immediately: the package types each spec as a
+ * distinct literal, and carrying a 37-member union through the UI makes
+ * typechecking disproportionately expensive for no benefit.
+ */
+export const CANONICAL_CLASSIFICATION_SPECS: readonly CanonicalClassification[] =
+  CLASSIFICATION_SPECS as readonly CanonicalClassification[];
+
+export function getCanonicalClassification(slug: string): CanonicalClassification | undefined {
+  return getClassification(slug) as CanonicalClassification | undefined;
+}
+
+/** Category display order — broad concepts first, infrastructure last. */
+export const CLASSIFICATION_CATEGORY_ORDER: readonly ClassificationCategory[] = [
+  'Entity',
+  'Creative Work',
+  'Media',
+  'Product',
+  'Web',
+  'Blockchain',
+  'Other',
+];
+
+export function classificationsByCategory(): {
+  category: ClassificationCategory;
+  classifications: CanonicalClassification[];
+}[] {
+  const buckets = new Map<ClassificationCategory, CanonicalClassification[]>();
+
+  for (const spec of CANONICAL_CLASSIFICATION_SPECS) {
+    const bucket = buckets.get(spec.category);
+    if (bucket) bucket.push(spec);
+    else buckets.set(spec.category, [spec]);
+  }
+
+  return CLASSIFICATION_CATEGORY_ORDER.filter((category) => buckets.has(category)).map(
+    (category) => ({
+      category,
+      classifications: (buckets.get(category) ?? []).sort((a, b) =>
+        a.displayName.localeCompare(b.displayName)
+      ),
+    })
+  );
+}
+
+/** Canonical predicates recommended for a classification, resolved to records. */
+export function recommendedPredicatesFor(slug: string): CanonicalPredicate[] {
+  const spec = getCanonicalClassification(slug);
+  if (!spec) return [];
+
+  return spec.metadataPredicates
+    .map((key) => getCanonicalPredicate(key))
+    .filter((predicate): predicate is CanonicalPredicate => predicate !== undefined);
+}
+
+export interface CanonicalRelationship {
+  /** Predicate key, e.g. `memberOf`. */
+  predicate: string;
+  /** Resolved predicate record, when the key is in the registry. */
+  record?: CanonicalPredicate;
+  /** What kinds of object this predicate expects for this subject type. */
+  expectedObjects: readonly ExpectedObjectShape[];
+  priority?: 'core' | 'recommended' | 'optional';
+  notes?: string;
+}
+
+export type ExpectedObjectShape =
+  | { kind: 'classification'; slug: string }
+  | { kind: 'schema'; context: string; type: string }
+  | { kind: 'primitive'; valueType: string }
+  | { kind: 'same-classification' }
+  | { kind: 'any'; reason: string };
+
+/**
+ * Typed relationships the registry defines for a subject classification.
+ *
+ * The shipped matrix is sparse — only a handful of classifications are densely
+ * typed — so callers should fall back to `recommendedPredicatesFor` when this
+ * returns nothing rather than treating an empty result as "no relationships".
+ */
+export function relationshipsFor(slug: string): CanonicalRelationship[] {
+  const entries = getMetadataPredicateMatrixFor(slug) as readonly {
+    predicate: string;
+    expectedObjects: readonly ExpectedObjectShape[];
+    priority?: 'core' | 'recommended' | 'optional';
+    notes?: string;
+  }[];
+
+  return entries.map((entry) => ({
+    predicate: entry.predicate,
+    record: getCanonicalPredicate(entry.predicate),
+    expectedObjects: entry.expectedObjects,
+    priority: entry.priority,
+    notes: entry.notes,
+  }));
+}
+
+/** Canonical predicates grouped by their registry category, in a stable order. */
+export function predicatesByCategory(): { category: string; predicates: CanonicalPredicate[] }[] {
+  const buckets = new Map<string, CanonicalPredicate[]>();
+
+  for (const predicate of CANONICAL_PREDICATES) {
+    const bucket = buckets.get(predicate.category);
+    if (bucket) bucket.push(predicate);
+    else buckets.set(predicate.category, [predicate]);
+  }
+
+  return [...buckets.entries()]
+    .sort(([a], [b]) => a.localeCompare(b))
+    .map(([category, predicates]) => ({
+      category,
+      // Enshrined first — they are the settled vocabulary.
+      predicates: predicates.sort(
+        (a, b) =>
+          Number(b.status === 'enshrined') - Number(a.status === 'enshrined') ||
+          a.name.localeCompare(b.name)
+      ),
+    }));
 }
