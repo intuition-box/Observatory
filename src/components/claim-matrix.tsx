@@ -19,9 +19,10 @@ import type { PredicateRule } from '../data/predicates';
 import { ATOM_TYPES } from '../data/atom-types';
 import { getAtomColor } from '../lib/atom-colors';
 import { useOnchainOntologyMatrix } from '../lib/intuition/use-onchain-ontology-matrix';
-import { useSlotProposals } from '../lib/intuition/use-slot-proposals';
+import { useSlotProposals, type SlotProposalView } from '../lib/intuition/use-slot-proposals';
 import type { OntologySlotProposal } from '../lib/intuition/ontology-slots';
 import { ONTOLOGY_SLOT_PREDICATE_LABEL } from '../lib/intuition/ontology-vocabulary';
+import { BackerAvatars } from './backer-avatars';
 import { getPredicateRule } from '../lib/intuition/predicate-resolution';
 import { useIntuitionNetwork } from '../lib/wallet/intuition-network-context';
 
@@ -362,12 +363,7 @@ function ProposalSection({
   showRuleDetails,
 }: {
   title: string;
-  items: Array<{
-    predicateLabel: string;
-    predicateId?: string;
-    source: 'curated' | 'onchain';
-    displayLine: string;
-  }>;
+  items: SlotProposalView[];
   definedTermColor: string;
   mapping: MatrixMapping;
   firstRef?: RefObject<HTMLButtonElement | null>;
@@ -390,30 +386,40 @@ function ProposalSection({
           const rule = showRuleDetails ? getPredicateRule(predicateId) : null;
 
           return (
-            <DialogClose
+            // The backer stack sits outside the DialogClose button: opening the
+            // list to read who staked must not count as picking the predicate.
+            <div
               key={`${item.source}-${predicateId}-${i}`}
-              render={
-                <button
-                  ref={i === 0 ? firstRef : undefined}
-                  type="button"
-                  onClick={() => onSelect(predicateId)}
-                  className="focus-ring flex w-full flex-col items-stretch rounded-md px-3 py-2.5 text-left transition-colors hover:bg-[var(--color-surface-hover)] sm:flex-row sm:items-center sm:justify-between gap-1"
-                  role="listitem"
-                >
-                  <span className="text-sm font-medium" style={{ color: definedTermColor }}>
-                    {item.displayLine}
-                  </span>
-                  {rule?.description && (
-                    <span className="text-[11px] text-[var(--color-text-muted)] sm:max-w-[45%] sm:text-right">
-                      {rule.description}
+              role="listitem"
+              className="flex items-center gap-2 rounded-md pr-2 transition-colors hover:bg-[var(--color-surface-hover)]"
+            >
+              <DialogClose
+                render={
+                  <button
+                    ref={i === 0 ? firstRef : undefined}
+                    type="button"
+                    onClick={() => onSelect(predicateId)}
+                    className="focus-ring flex min-w-0 flex-1 flex-col items-stretch rounded-md px-3 py-2.5 text-left sm:flex-row sm:items-center sm:justify-between gap-1"
+                  >
+                    <span className="text-sm font-medium" style={{ color: definedTermColor }}>
+                      {item.displayLine}
                     </span>
-                  )}
-                  {item.source === 'onchain' && !rule && (
-                    <span className="text-[10px] text-emerald-400/80">on-chain</span>
-                  )}
-                </button>
-              }
-            />
+                    {rule?.description && (
+                      <span className="text-[11px] text-[var(--color-text-muted)] sm:max-w-[45%] sm:text-right">
+                        {rule.description}
+                      </span>
+                    )}
+                    {item.source === 'onchain' && !rule && (
+                      <span className="text-[10px] text-emerald-400/80">on-chain</span>
+                    )}
+                  </button>
+                }
+              />
+
+              {item.tripleTermId && (
+                <BackerAvatars tripleTermId={item.tripleTermId} compact />
+              )}
+            </div>
           );
         })}
       </div>

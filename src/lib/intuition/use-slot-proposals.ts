@@ -13,6 +13,13 @@ export type SlotProposalView = {
   predicateId?: string;
   source: 'curated' | 'onchain';
   displayLine: string;
+  /**
+   * The on-chain triple carrying this proposal, when there is one.
+   *
+   * Needed to read who staked on it — the aggregate total says how much
+   * conviction exists, this says whose.
+   */
+  tripleTermId?: `0x${string}`;
 };
 
 export function useSlotProposals(
@@ -92,6 +99,7 @@ export function useSlotProposals(
     predicateLabel: p.predicateLabel,
     source: 'onchain' as const,
     displayLine: '',
+    tripleTermId: p.metaTripleTermId,
   }));
 
   const visibleProposals = isStaticNetwork ? curated : onchain;
