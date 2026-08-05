@@ -4,8 +4,9 @@ import { useMemo } from 'react';
 import { usePublicClient, useWalletClient } from 'wagmi';
 
 import { useIntuitionNetwork } from '../wallet/intuition-network-context';
+import { isWalletEnabled } from '../wallet/wallet-enabled';
 
-export function useIntuitionWriteConfig(): WriteConfig | null {
+function useIntuitionWriteConfigWithWallet(): WriteConfig | null {
   const { chainId, isStaticNetwork } = useIntuitionNetwork();
   const publicClient = usePublicClient({ chainId });
   const { data: walletClient } = useWalletClient();
@@ -21,3 +22,13 @@ export function useIntuitionWriteConfig(): WriteConfig | null {
     } satisfies WriteConfig;
   }, [publicClient, walletClient, chainId, isStaticNetwork]);
 }
+
+/**
+ * Writing needs a wallet; without one there is nothing to configure.
+ *
+ * Selected at module load from a build-time constant, so wagmi hooks are never
+ * called outside a `WagmiProvider`.
+ */
+export const useIntuitionWriteConfig = isWalletEnabled
+  ? useIntuitionWriteConfigWithWallet
+  : (): WriteConfig | null => null;

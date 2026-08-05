@@ -1,7 +1,9 @@
 import { usePrivy } from '@privy-io/react-auth';
 import { useCallback } from 'react';
 
-export function useWalletSession() {
+import { isWalletEnabled } from './wallet-enabled';
+
+function useWalletSessionWithPrivy() {
   const { ready, authenticated, login, logout, connectWallet } = usePrivy();
 
   const connect = useCallback(async () => {
@@ -24,10 +26,16 @@ export function useWalletSession() {
     }
   }, [logout]);
 
-  return {
-    ready,
-    authenticated,
-    connect,
-    disconnect,
-  };
+  return { ready, authenticated, connect, disconnect };
 }
+
+/** Inert session for builds without a Privy app id — `usePrivy` would throw. */
+function useWalletSessionReadOnly(): ReturnType<typeof useWalletSessionWithPrivy> {
+  const noop = useCallback(async () => {}, []);
+  return { ready: true, authenticated: false, connect: noop, disconnect: noop };
+}
+
+/** Selected at module load from a build-time constant — not a conditional hook. */
+export const useWalletSession = isWalletEnabled
+  ? useWalletSessionWithPrivy
+  : useWalletSessionReadOnly;

@@ -8,9 +8,21 @@ importers:
 
   .:
     dependencies:
+      '@0xintuition/classifications':
+        specifier: 0.1.0-alpha.0
+        version: 0.1.0-alpha.0
       '@0xintuition/graphql':
         specifier: ^2.0.2
         version: 2.0.2(react@19.2.6)
+      '@0xintuition/ids':
+        specifier: 0.1.0-alpha.0
+        version: 0.1.0-alpha.0(viem@2.50.4(bufferutil@4.1.0)(typescript@5.9.3)(utf-8-validate@5.0.10)(zod@4.4.3))
+      '@0xintuition/predicates':
+        specifier: 0.1.0-alpha.0
+        version: 0.1.0-alpha.0(viem@2.50.4(bufferutil@4.1.0)(typescript@5.9.3)(utf-8-validate@5.0.10)(zod@4.4.3))
+      '@0xintuition/primitives':
+        specifier: 0.1.0-alpha.0
+        version: 0.1.0-alpha.0(viem@2.50.4(bufferutil@4.1.0)(typescript@5.9.3)(utf-8-validate@5.0.10)(zod@4.4.3))
       '@0xintuition/protocol':
         specifier: ^2.0.2
         version: 2.0.2(viem@2.50.4(bufferutil@4.1.0)(typescript@5.9.3)(utf-8-validate@5.0.10)(zod@4.4.3))
@@ -102,8 +114,26 @@ importers:
 
 packages:
 
+  '@0xintuition/classifications@0.1.0-alpha.0':
+    resolution: {integrity: sha512-hExmqKtQiHBPvxBdW2Ed5FXCBS6xHYp9dwTzx6u8zAbZ4CqvzBHF9ScoVWAiZqU3Py3j4VEDsXdTR+oM5fbDfg==}
+
   '@0xintuition/graphql@2.0.2':
     resolution: {integrity: sha512-wWPZQWJoXyCPxk/8rusFVE0gp5+v5TyCJE8oI0aL+i36HwfMXhFsQtF0Idd75O2RObdpC629ZwaUbnYTVew7pw==}
+
+  '@0xintuition/ids@0.1.0-alpha.0':
+    resolution: {integrity: sha512-ILFtC1ldVBvQsLGMZ9Tu+rY+VpUYJFqczFbQD/tMTi0vjBjbRoF8LJ/j8iaTJhJOvqBB3yx7sC/dRsAGaEwwwQ==}
+    peerDependencies:
+      viem: ^2.0.0
+
+  '@0xintuition/predicates@0.1.0-alpha.0':
+    resolution: {integrity: sha512-pe4usDE7HUsJSG6QktWlvmtlhSNOHI32WOJl7B+XInXsHwDTh65TIryhOUBMNmG5x/nrPkYr3TLEncxw758leQ==}
+    peerDependencies:
+      viem: ^2.0.0
+
+  '@0xintuition/primitives@0.1.0-alpha.0':
+    resolution: {integrity: sha512-o6bG/r5iaon2M3t98la1HkCMCTXSEmJN1FBbiC6Jsmu06Ch2PB7CMVbxnfZ4hyZBEiVGpWWEjMpiyLYdGwkfhw==}
+    peerDependencies:
+      viem: ^2.0.0
 
   '@0xintuition/protocol@2.0.2':
     resolution: {integrity: sha512-BjdBkskuTj5K7KyCd6/33gDkZLh1rEMSGMNfA6iD5jM5TU7OC32ySybBKZ2tQzicnvWGYTSUSh01muBAmILgPw==}
@@ -4351,6 +4381,8 @@ packages:
 
 snapshots:
 
+  '@0xintuition/classifications@0.1.0-alpha.0': {}
+
   '@0xintuition/graphql@2.0.2(react@19.2.6)':
     dependencies:
       '@graphql-codegen/typescript-document-nodes': 4.0.16(graphql@16.14.0)
@@ -4359,6 +4391,22 @@ snapshots:
       graphql-request: 7.4.0(graphql@16.14.0)
     transitivePeerDependencies:
       - react
+
+  '@0xintuition/ids@0.1.0-alpha.0(viem@2.50.4(bufferutil@4.1.0)(typescript@5.9.3)(utf-8-validate@5.0.10)(zod@4.4.3))':
+    dependencies:
+      viem: 2.50.4(bufferutil@4.1.0)(typescript@5.9.3)(utf-8-validate@5.0.10)(zod@4.4.3)
+
+  '@0xintuition/predicates@0.1.0-alpha.0(viem@2.50.4(bufferutil@4.1.0)(typescript@5.9.3)(utf-8-validate@5.0.10)(zod@4.4.3))':
+    dependencies:
+      '@0xintuition/ids': 0.1.0-alpha.0(viem@2.50.4(bufferutil@4.1.0)(typescript@5.9.3)(utf-8-validate@5.0.10)(zod@4.4.3))
+      viem: 2.50.4(bufferutil@4.1.0)(typescript@5.9.3)(utf-8-validate@5.0.10)(zod@4.4.3)
+
+  '@0xintuition/primitives@0.1.0-alpha.0(viem@2.50.4(bufferutil@4.1.0)(typescript@5.9.3)(utf-8-validate@5.0.10)(zod@4.4.3))':
+    dependencies:
+      '@0xintuition/classifications': 0.1.0-alpha.0
+      '@0xintuition/ids': 0.1.0-alpha.0(viem@2.50.4(bufferutil@4.1.0)(typescript@5.9.3)(utf-8-validate@5.0.10)(zod@4.4.3))
+      '@0xintuition/predicates': 0.1.0-alpha.0(viem@2.50.4(bufferutil@4.1.0)(typescript@5.9.3)(utf-8-validate@5.0.10)(zod@4.4.3))
+      viem: 2.50.4(bufferutil@4.1.0)(typescript@5.9.3)(utf-8-validate@5.0.10)(zod@4.4.3)
 
   '@0xintuition/protocol@2.0.2(viem@2.50.4(bufferutil@4.1.0)(typescript@5.9.3)(utf-8-validate@5.0.10)(zod@4.4.3))':
     dependencies:

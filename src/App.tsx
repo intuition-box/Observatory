@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { lazy, Suspense, useCallback, useEffect, useRef, useState } from 'react';
 import { Routes, Route, NavLink, useNavigate, useLocation } from 'react-router-dom';
 
 import { GlobalSearchInput } from './components/global-search-input';
@@ -15,10 +15,31 @@ import { useClaimWorkspace } from './lib/use-claim-workspace';
 import { ThemeSchema } from './lib/schemas';
 import { GLOBAL_SEARCH_DEBOUNCE_MS, TUTORIAL_ROUTE_SETTLE_MS } from './lib/timings';
 import { HomePage } from './pages/home';
-import { EntityMatrixPage } from './pages/entity-matrix';
-import { ContributingOntologyPage } from './pages/contributing-ontology';
-import { ProtocolPage } from './pages/protocol';
 import type { Theme } from './types';
+
+// The explorer is the landing route and stays eager. The rest load on demand —
+// the matrix and graph pull in d3, and the protocol/registry views pull in the
+// indexer query layer, none of which a first-time visitor needs immediately.
+const EntityMatrixPage = lazy(() =>
+  import('./pages/entity-matrix').then((m) => ({ default: m.EntityMatrixPage }))
+);
+const ContributingOntologyPage = lazy(() =>
+  import('./pages/contributing-ontology').then((m) => ({ default: m.ContributingOntologyPage }))
+);
+const ProtocolPage = lazy(() =>
+  import('./pages/protocol').then((m) => ({ default: m.ProtocolPage }))
+);
+const RegistryPage = lazy(() =>
+  import('./pages/registry').then((m) => ({ default: m.RegistryPage }))
+);
+
+function RouteFallback() {
+  return (
+    <div className="px-4 sm:px-6 py-8 text-sm text-[var(--color-text-muted)]" role="status">
+      Loading…
+    </div>
+  );
+}
 
 function getSystemTheme(): Theme {
   if (typeof window === 'undefined') return 'dark';
@@ -114,6 +135,9 @@ export default function App() {
                 <NavLink to="/protocol" className={navLinkClass}>
                   Protocol
                 </NavLink>
+                <NavLink to="/registry" className={navLinkClass}>
+                  Registry
+                </NavLink>
                 <NavLink to="/contributing" className={navLinkClass}>
                   Contributing
                 </NavLink>
@@ -157,12 +181,15 @@ export default function App() {
 
         <SharedBatchFromHash />
 
-        <Routes>
-          <Route path="/" element={<HomePage />} />
-          <Route path="/matrix" element={<EntityMatrixPage />} />
-          <Route path="/protocol" element={<ProtocolPage />} />
-          <Route path="/contributing" element={<ContributingOntologyPage />} />
-        </Routes>
+        <Suspense fallback={<RouteFallback />}>
+          <Routes>
+            <Route path="/" element={<HomePage />} />
+            <Route path="/matrix" element={<EntityMatrixPage />} />
+            <Route path="/protocol" element={<ProtocolPage />} />
+            <Route path="/registry" element={<RegistryPage />} />
+            <Route path="/contributing" element={<ContributingOntologyPage />} />
+          </Routes>
+        </Suspense>
       </div>
     </ClaimWorkspaceProvider>
   );

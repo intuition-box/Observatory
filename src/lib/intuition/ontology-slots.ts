@@ -2,8 +2,14 @@ import type { WriteConfig } from '@0xintuition/sdk';
 
 import { ATOM_TYPES } from '../../data/atom-types';
 import { getAtomTypeLabel } from '../../data/ontology-claim-patterns';
-import { findAtomsByLabel, queryTriples, type IndexedTriple } from './ontology-graphql';
 import {
+  findAtomByTermId,
+  findAtomsByLabel,
+  queryTriples,
+  type IndexedTriple,
+} from './ontology-graphql';
+import {
+  ONTOLOGY_META_PREDICATE_ATOM_ID,
   ONTOLOGY_META_PREDICATE_LABEL,
   ONTOLOGY_SLOT_PREDICATE_LABEL,
 } from './ontology-vocabulary';
@@ -125,18 +131,41 @@ export async function ensureOntologySlotTriple(
   return tripleTermId;
 }
 
+/**
+ * Every term id the meta-predicate might be stored under.
+ *
+ * Reads must match both: the canonical `DefinedTerm` atom, and the legacy atom
+ * minted from the bare label `'is best usage for'` before canonicalisation.
+ * Dropping the legacy id would make every pre-existing proposal disappear.
+ */
+export async function resolveMetaPredicateTermIds(): Promise<`0x${string}`[]> {
+  const ids: `0x${string}`[] = [];
+
+  const canonical = await findAtomByTermId(ONTOLOGY_META_PREDICATE_ATOM_ID);
+  if (canonical?.term_id?.startsWith('0x')) {
+    ids.push(canonical.term_id as `0x${string}`);
+  }
+
+  const legacy = await findAtomTermIdByLabel(ONTOLOGY_META_PREDICATE_LABEL, 3);
+  if (legacy && !ids.includes(legacy)) {
+    ids.push(legacy);
+  }
+
+  return ids;
+}
+
 export async function findMetaProposalTriple(
   slotTermId: `0x${string}`,
   proposedPredicateTermId: `0x${string}`
 ): Promise<IndexedTriple | null> {
-  const metaTermId = await findAtomTermIdByLabel(ONTOLOGY_META_PREDICATE_LABEL, 3);
-  if (!metaTermId) return null;
+  const metaTermIds = await resolveMetaPredicateTermIds();
+  if (metaTermIds.length === 0) return null;
 
   const triples = await queryTriples(
     {
       _and: [
         { subject_id: { _eq: proposedPredicateTermId } },
-        { predicate_id: { _eq: metaTermId } },
+        { predicate_id: { _in: metaTermIds } },
         { object_id: { _eq: slotTermId } },
       ],
     },
@@ -149,13 +178,13 @@ export async function findMetaProposalTriple(
 export async function fetchSlotProposals(
   slotTermId: `0x${string}`
 ): Promise<OntologySlotProposal[]> {
-  const metaTermId = await findAtomTermIdByLabel(ONTOLOGY_META_PREDICATE_LABEL, 3);
-  if (!metaTermId) return [];
+  const metaTermIds = await resolveMetaPredicateTermIds();
+  if (metaTermIds.length === 0) return [];
 
   const triples = await queryTriples(
     {
       _and: [
-        { predicate_id: { _eq: metaTermId } },
+        { predicate_id: { _in: metaTermIds } },
         { object_id: { _eq: slotTermId } },
       ],
     },
@@ -201,14 +230,14 @@ export async function fetchOnchainOntologySlots(): Promise<OnchainOntologySlot[]
   const slotTermIds = [...slotsByTermId.keys()];
   if (slotTermIds.length === 0) return [];
 
-  const metaTermId = await findAtomTermIdByLabel(ONTOLOGY_META_PREDICATE_LABEL, 3);
+  const metaTermIds = await resolveMetaPredicateTermIds();
   const proposalsBySlot = new Map<`0x${string}`, OntologySlotProposal[]>();
 
-  if (metaTermId) {
+  if (metaTermIds.length > 0) {
     const metaTriples = await queryTriples(
       {
         _and: [
-          { predicate_id: { _eq: metaTermId } },
+          { predicate_id: { _in: metaTermIds } },
           { object_id: { _in: slotTermIds } },
         ],
       },

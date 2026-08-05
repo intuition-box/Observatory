@@ -13,7 +13,8 @@ import {
   findOntologySlotTriple,
   type OntologySlotRef,
 } from './ontology-slots';
-import { findAtomsByLabel } from './ontology-graphql';
+import { LISTED_IN, PREDICATE_REGISTRY } from './canonical';
+import { findAtomByTermId, findAtomsByLabel, findExistingTermIds } from './ontology-graphql';
 import { ONTOLOGY_META_PREDICATE_LABEL } from './ontology-vocabulary';
 import type { ProtocolAtomResolution } from './types';
 
@@ -63,6 +64,34 @@ export async function estimateOntologyProposalCost(
   }
 
   return atomCost * BigInt(newAtoms) + triplePayment;
+}
+
+/**
+ * Estimate TRUST for a registry proposal: ⟨candidate, listedIn, registry⟩.
+ *
+ * Up to three atoms may need minting (the candidate, `listedIn`, and the
+ * registry atom itself — none of which are guaranteed to exist), plus one
+ * triple. Deterministic ids let us check exactly which are missing rather than
+ * assuming the worst case.
+ */
+export async function estimateRegistryProposalCost(
+  config: WriteConfig,
+  candidateAtomId: `0x${string}`
+): Promise<bigint> {
+  const [atomCost, triplePayment] = await Promise.all([
+    multiVaultGetAtomCost(config),
+    getTripleAssetsPerStatement(config),
+  ]);
+
+  const required: `0x${string}`[] = [
+    candidateAtomId,
+    LISTED_IN.atomId,
+    PREDICATE_REGISTRY.atomId,
+  ];
+  const existing = await findExistingTermIds(required);
+  const missing = required.filter((id) => !existing.has(id)).length;
+
+  return atomCost * BigInt(missing) + triplePayment;
 }
 
 /** @deprecated Use estimateOntologyProposalCost for ontology claims. */
@@ -126,6 +155,50 @@ export async function writeAtomFromLabel(
   await wait(atom.transactionHash, INDEX_WAIT_OPTIONS);
 
   return atom.state.termId;
+}
+
+/**
+ * Create an atom from canonical bytes, reusing it if the id already exists.
+ *
+ * `createAtomFromString` writes `toHex(data)` verbatim, and an atom's id is
+ * `keccak256(ATOM_SALT ‖ keccak256(utf8(data)))` — so passing a canonical
+ * JSON-LD document here produces exactly the id the rest of the ecosystem
+ * derives for it. That is the whole fix: the app used to pass a bare label
+ * (`'created by'`), which hashed to something no other app would ever look up.
+ *
+ * Because the id is known before submitting, we can check the indexer first and
+ * skip minting a duplicate — free, synchronous, and no wallet required.
+ */
+export async function writeCanonicalAtom(
+  config: WriteConfig,
+  atomData: string,
+  expectedTermId: `0x${string}`,
+  displayLabel: string,
+  onProgress?: (message: string) => void
+): Promise<`0x${string}`> {
+  const existing = await findAtomByTermId(expectedTermId);
+  if (existing?.term_id?.startsWith('0x')) {
+    onProgress?.(`Reusing canonical atom «${displayLabel}»…`);
+    return existing.term_id as `0x${string}`;
+  }
+
+  onProgress?.(`Creating canonical atom «${displayLabel}»…`);
+  const atom = await createAtomFromString(config, atomData as `${string}`);
+
+  onProgress?.(`Indexing atom «${displayLabel}»…`);
+  await wait(atom.transactionHash, INDEX_WAIT_OPTIONS);
+
+  const mintedTermId = atom.state.termId;
+  if (mintedTermId.toLowerCase() !== expectedTermId.toLowerCase()) {
+    // The contract derives the id from the same bytes we hashed, so a mismatch
+    // means our derivation drifted from the chain's — never silently continue.
+    throw new Error(
+      `Canonical id mismatch for «${displayLabel}»: expected ${expectedTermId}, chain returned ${mintedTermId}. ` +
+        'The @0xintuition/ids derivation may have changed — do not stake against this atom.'
+    );
+  }
+
+  return mintedTermId;
 }
 
 /**

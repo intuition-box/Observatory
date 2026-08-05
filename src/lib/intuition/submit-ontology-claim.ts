@@ -4,29 +4,57 @@ import { getAtomTypeLabel } from '../../data/ontology-claim-patterns';
 import type { ClaimEntry } from '../../types';
 import {
   ensureOntologySlotTriple,
-  findAtomTermIdByLabel,
   findMetaProposalTriple,
   formatSlotDisplayLine,
   slotRefFromTypes,
 } from './ontology-slots';
-import { ONTOLOGY_META_PREDICATE_LABEL } from './ontology-vocabulary';
+import {
+  ONTOLOGY_META_PREDICATE_ATOM_DATA,
+  ONTOLOGY_META_PREDICATE_ATOM_ID,
+  ONTOLOGY_META_PREDICATE_LABEL,
+} from './ontology-vocabulary';
+import { resolveCanonicalPredicate } from './predicate-registry-map';
 import {
   assertSufficientTrustBalance,
   estimateOntologyProposalCost,
-  writeAtomFromLabel,
+  writeCanonicalAtom,
   writeTripleFromTermIds,
 } from './protocol-write';
 import type { ProtocolAtomResolution, SubmitClaimResult } from './types';
 
-async function resolveAtom(
+/**
+ * Resolve the proposed predicate to an on-chain atom using **canonical** bytes.
+ *
+ * The app used to mint predicate atoms from bare labels, which hashed to ids no
+ * other Intuition app would ever derive. Routing through the registry map means
+ * a predicate that exists canonically (`created by` → `createdBy`) reuses the
+ * ecosystem's atom, and one that does not carries canonical `DefinedTerm` bytes
+ * so its id already matches if upstream later adopts it.
+ */
+async function resolveCanonicalPredicateAtom(
   config: WriteConfig,
   resolution: ProtocolAtomResolution,
   onProgress?: (label: string) => void
-): Promise<`0x${string}`> {
+): Promise<{ termId: `0x${string}`; resolved: ReturnType<typeof resolveCanonicalPredicate> }> {
+  const resolved = resolveCanonicalPredicate(resolution.label.trim());
+
   if (resolution.mode === 'existing') {
-    return resolution.termId;
+    return { termId: resolution.termId, resolved };
   }
-  return writeAtomFromLabel(config, resolution.label, onProgress);
+
+  const atomData =
+    resolved.kind === 'candidate' ? resolved.atomData : resolved.predicate.atomData;
+  const atomId = resolved.kind === 'candidate' ? resolved.atomId : resolved.predicate.atomId;
+
+  const termId = await writeCanonicalAtom(
+    config,
+    atomData,
+    atomId,
+    resolution.label.trim(),
+    onProgress
+  );
+
+  return { termId, resolved };
 }
 
 /**
@@ -60,21 +88,21 @@ export async function submitOntologyClaimOnchain(
   await assertSufficientTrustBalance(config, estimatedCost);
 
   onProgress?.('Resolving ontology atoms…');
-  const proposedPredicateTermId = await resolveAtom(
+  const { termId: proposedPredicateTermId } = await resolveCanonicalPredicateAtom(
     config,
     proposedPredicateResolution,
     onProgress
   );
 
-  let metaPredicateTermId = await findAtomTermIdByLabel(ONTOLOGY_META_PREDICATE_LABEL, 3);
-
-  if (!metaPredicateTermId) {
-    metaPredicateTermId = await writeAtomFromLabel(
-      config,
-      ONTOLOGY_META_PREDICATE_LABEL,
-      onProgress
-    );
-  }
+  // `writeCanonicalAtom` reuses the atom when the deterministic id already
+  // exists, so this covers both the first-ever write and every later one.
+  const metaPredicateTermId = await writeCanonicalAtom(
+    config,
+    ONTOLOGY_META_PREDICATE_ATOM_DATA,
+    ONTOLOGY_META_PREDICATE_ATOM_ID,
+    ONTOLOGY_META_PREDICATE_LABEL,
+    onProgress
+  );
 
   const slotTermId = await ensureOntologySlotTriple(config, slotRef, onProgress);
 

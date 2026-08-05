@@ -7,9 +7,13 @@ import {
   predicateDisplayLabel,
   resolvePredicateIdFromInput,
 } from '../lib/intuition/predicate-resolution';
+import { provenanceForPredicate } from '../lib/intuition/predicate-provenance';
+import { resolveCanonicalPredicate } from '../lib/intuition/predicate-registry-map';
 import { predicatesForClaimBuilder } from '../lib/claim-readiness';
 import { ATOM_TYPES } from '../data/atom-types';
 import { LockNote } from './lock-note';
+import { RegistryBadge } from './registry-badge';
+
 
 interface PredicateSelectProps {
   subjectType: string | null;
@@ -113,6 +117,8 @@ export function PredicateSelect({
         <p className="text-xs text-[var(--color-text-muted)]">{knownRule.description}</p>
       )}
 
+      {value && !disabled && <CanonicalNote appPredicateId={value} />}
+
       {enforceCuratedTypeRules &&
         !disabled &&
         onlyPredicate &&
@@ -130,6 +136,47 @@ export function PredicateSelect({
         <p className="text-xs text-amber-400">
           No curated predicates for {subjectType} — type your own relationship.
         </p>
+      )}
+    </div>
+  );
+}
+
+/**
+ * Shows what the selected predicate resolves to on chain.
+ *
+ * Two things need disclosing before someone stakes TRUST:
+ *
+ * 1. Whether the predicate is canonical vocabulary or a proposal.
+ * 2. Whether writing it **flips subject and object**. Picking `employs` writes
+ *    the canonical `employed by` with the operands swapped, so one fact lands in
+ *    one vault instead of splitting stake across two directions. That is correct,
+ *    but it would be a nasty surprise if it happened silently.
+ */
+function CanonicalNote({ appPredicateId }: { appPredicateId: string }) {
+  const resolved = resolveCanonicalPredicate(appPredicateId);
+  const provenance = provenanceForPredicate(appPredicateId);
+
+  return (
+    <div className="flex flex-wrap items-center gap-1.5 text-xs text-[var(--color-text-muted)]">
+      <RegistryBadge provenance={provenance} />
+      {resolved.kind === 'candidate' ? (
+        <span>Not in the canonical registry — proposing it creates new vocabulary.</span>
+      ) : (
+        <span>
+          Writes as{' '}
+          <code className="rounded bg-[var(--color-surface-raised)] px-1 text-[var(--color-text-secondary)]">
+            {resolved.predicate.name}
+          </code>
+          {resolved.flip && (
+            <>
+              {' '}
+              <span className="text-[var(--color-accent)]">
+                with subject and object swapped
+              </span>
+            </>
+          )}
+          .
+        </span>
       )}
     </div>
   );

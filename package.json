@@ -23,7 +23,11 @@
     ]
   },
   "dependencies": {
+    "@0xintuition/classifications": "0.1.0-alpha.0",
     "@0xintuition/graphql": "^2.0.2",
+    "@0xintuition/ids": "0.1.0-alpha.0",
+    "@0xintuition/predicates": "0.1.0-alpha.0",
+    "@0xintuition/primitives": "0.1.0-alpha.0",
     "@0xintuition/protocol": "^2.0.2",
     "@0xintuition/sdk": "^2.0.2",
     "@privy-io/react-auth": "^3.27.0",
